@@ -1,0 +1,2 @@
+# shellm
+Terminal LLM Client
