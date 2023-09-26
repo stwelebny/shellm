@@ -3,7 +3,9 @@
 
 <DIV>Features a uiversal Linux commandline tool for ChatGPT.</DIV>
 </BR>
+</BR>
 <B> ATTENTION:The AI gets access to your operating system with all rights of the user that started the client. It is therefore recommended to start it with limited user rights and in safe environments, e.g. sandboxed.</B>
+</BR>
 </BR>
 <DIV>copy chat.~conf to .chat.conf and edit your API key. You can also change the model name there.</DIV>
 <DIV>Usage: ./chat_client filename.chat
