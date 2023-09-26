@@ -35,3 +35,6 @@
 *.conf
 .*
 !/.gitignore
+
+# Data
+*.chat

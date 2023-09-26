@@ -13,6 +13,7 @@
 #include <json/json.h>  // For jsoncpp
 #include <sstream>  // For std::istringstream
 
+Json::Value loadJSONFromFile(const std::string& filename);
 
 size_t writeCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
@@ -58,9 +59,12 @@ std::string chatWithGPT(const std::vector<std::pair<std::string, std::string> >&
 	Json::Value root(Json::objectValue);  // Create the root JSON object
 	root["model"] = modelName;
 	root["messages"] = messagesJson;
+        Json::Value tools =  loadJSONFromFile("functions.def");
+        root["functions"] = tools;       
 
 	Json::StreamWriterBuilder writer;
 	std::string post_fields = Json::writeString(writer, root);  // Convert the JSON object to a string
+//        std::cout << post_fields + "\n";
 
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_fields.c_str());
 
@@ -90,6 +94,31 @@ std::string exec(const char* cmd) {
     }
     return result;
 }
+
+// Function to execute a Linux command based on the function specification
+Json::Value executeLinuxCommand(const std::string& arguments_str) {
+    // Parse function specification to get required parameters
+    Json::Value arguments_json;
+    Json::Reader reader;
+    bool parsingSuccessful = reader.parse(arguments_str, arguments_json);
+    if (!parsingSuccessful) {
+        // Handle parsing failure (e.g., return an error JSON object)
+    }
+
+    // Extract the command from the parsed arguments
+    std::string command = arguments_json["command"].asString();
+    // Call the exec function
+    std::string output = exec(command.c_str());
+
+    // Format the output into a JSON object
+    Json::Value outputJson;
+    outputJson["tool"] = "linux_command";
+    outputJson["command"] = command;
+    outputJson["output"] = output;
+
+    return outputJson;
+}
+
 
 std::map<std::string, std::string> readConfigFile(const std::string& filename) {
     std::map<std::string, std::string> config;
@@ -172,32 +201,29 @@ int main(int argc, char *argv[]) {
     // Load existing chat history
     std::vector<std::pair<std::string, std::string>> messages = loadMessagesFromFile(filename);
     // Initialization
-//    initscr(); // Initialize the window
-//    scrollok(stdscr, TRUE); // Enable scrolling
-//    noecho();  // Turn off automatic echoing of typed characters
-//    curs_set(FALSE); // Hide the cursor
     keypad(stdscr, TRUE); // Enable special keys
 
     std::string chatHistory = messagesToChatHistory(messages);
 
     std::map<std::string, std::string> config = readConfigFile(".chat.conf");
 
-    // Now you can access config values like this:
     std::string apiKey = config["API_KEY"];
     std::string modelName = config["MODEL_NAME"];
-    // std::string tools = config["TOOLS"];
     int max_tokens = 0;
     try {
         max_tokens = std::stoi(config["MAX_TOKENS"]);
     } catch (const std::invalid_argument& e) {
-    // Handle exception: string couldn't be converted to an integer
     } catch (const std::out_of_range& e) {
-    // Handle exception: integer out of range for int
     }
 
 
     if (messages.empty()) {
         messages.push_back({"system", "You are a helpful assistant."});
+  /*      Json::Value tools =  loadJSONFromFile("functions.def");
+	Json::StreamWriterBuilder writer;
+        std::string toolsString = Json::writeString(writer, tools);  // Convert the JSON object to a string
+        messages.push_back({"system", ("Functions, you can use: " + toolsString).c_str()});
+  */
     }
     int total_tokens = 2048;
 
@@ -205,19 +231,11 @@ int main(int argc, char *argv[]) {
     while (1) {
         // Display chat history
         std::cout << chatHistory << std::endl;
-        // printw("%s\n\n", chatHistory.c_str());
         refresh();
-        // Get user input
-        // move(LINES - 1, 0);
-        // printw("User: ");
-        // echo();  // Enable echoing for user input
-        // char user_input[256];
         flushinp();
         std::cout << "User: ";
         std::string user_input;
         std::getline(std::cin, user_input);
-        // getstr(user_input);
-        // noecho();
         chatHistory += "You: " + std::string(user_input) + "\n";
 	messages.push_back({"user", user_input});
 
@@ -227,6 +245,7 @@ int main(int argc, char *argv[]) {
 	std::istringstream json_stream(json_response);
 	json_stream >> root;
 	std::string gpt_response = root["choices"][0]["message"]["content"].asString();
+        std::cout << json_response + "\n";
 	total_tokens = root["usage"]["total_tokens"].asInt();
 
         chatHistory += "AI: " + gpt_response + "\n";
@@ -234,12 +253,34 @@ int main(int argc, char *argv[]) {
 
         // Save the entire message history to a file
         saveMessagesToFile(messages, filename);
+        
+        if (root["choices"][0]["message"].isMember("function_call")) {
+            std::string functionName = root["choices"][0]["message"]["function_call"]["name"].asString();
+            if (functionName == "execute_linux_command") {
+               std::string arguments = root["choices"][0]["message"]["function_call"]["arguments"].asString();
+               // Execute the function using these parameters
+               Json::Value result = executeLinuxCommand(arguments);
+               Json::StreamWriterBuilder writer;
+               std::string resultString = Json::writeString(writer, result);  // Convert the JSON object to a string
+               messages.push_back({"system", resultString});
+	       std::string json_response = chatWithGPT(messages,apiKey, modelName, max_tokens, total_tokens);
+               std::istringstream json_stream(json_response);
+               json_stream >> root;
+  //             root = json_stream.str();
+               std::string gpt_response = root["choices"][0]["message"]["content"].asString();
+               total_tokens = root["usage"]["total_tokens"].asInt();
+    
+               chatHistory += "AI: " + gpt_response + "\n";
+               messages.push_back({"assistant", gpt_response});
+               saveMessagesToFile(messages, filename);
+            }
+        }
 
         Json::Value usage = root["usage"];
 	int prompt_tokens = usage["prompt_tokens"].asInt();
 	int completion_tokens = usage["completion_tokens"].asInt();
-	int total_tokens = usage["total_tokens"].asInt();
 	std::string tokenInfo = "Prompt: " + std::to_string(prompt_tokens) + ", Completion: " + std::to_string(completion_tokens) + ", Total Tokens: " + std::to_string(total_tokens) + "\n";
+
         
         chatHistory += tokenInfo + "\n";
         clear();
