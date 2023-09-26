@@ -12,6 +12,20 @@
         },
         "required": ["command"]
     }
+},
+{
+  "name": "self_call",
+  "description": "Allows ChatGPT to call itself for multi-step tasks",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "task": {
+        "type": "string",
+        "description": "The task that ChatGPT should perform in the next step"
+      }
+    },
+    "required": ["task"]
+  }
 }
 ,
 ]

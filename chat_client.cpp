@@ -119,6 +119,36 @@ Json::Value executeLinuxCommand(const std::string& arguments_str) {
     return outputJson;
 }
 
+Json::Value executeSelfCallCommand(const std::string& arguments_str) {
+    // Parse function specification to get required parameters
+    Json::Value arguments_json;
+    Json::Reader reader;
+    bool parsingSuccessful = reader.parse(arguments_str, arguments_json);
+    if (!parsingSuccessful) {
+        // Handle parsing failure (e.g., return an error JSON object)
+    }
+    std::string command = arguments_json["task"].asString();
+
+    // Format the output into a JSON object
+    Json::Value outputJson;
+    outputJson["tool"] = "self_call";
+    outputJson["command"] = command;
+    outputJson["output"] = command;
+
+    return outputJson;
+}
+
+Json::Value executeDummyCommand(const std::string& arguments_str) {
+
+    // Format the output into a JSON object
+    Json::Value outputJson;
+    outputJson["tool"] = "unknow tool";
+    outputJson["output"] = "This tool is not implemented";
+
+    return outputJson;
+}
+
+
 
 std::map<std::string, std::string> readConfigFile(const std::string& filename) {
     std::map<std::string, std::string> config;
@@ -219,11 +249,6 @@ int main(int argc, char *argv[]) {
 
     if (messages.empty()) {
         messages.push_back({"system", "You are a helpful assistant."});
-  /*      Json::Value tools =  loadJSONFromFile("functions.def");
-	Json::StreamWriterBuilder writer;
-        std::string toolsString = Json::writeString(writer, tools);  // Convert the JSON object to a string
-        messages.push_back({"system", ("Functions, you can use: " + toolsString).c_str()});
-  */
     }
     int total_tokens = 2048;
 
@@ -245,7 +270,7 @@ int main(int argc, char *argv[]) {
 	std::istringstream json_stream(json_response);
 	json_stream >> root;
 	std::string gpt_response = root["choices"][0]["message"]["content"].asString();
-        std::cout << json_response + "\n";
+        // std::cout << json_response + "\n";
 	total_tokens = root["usage"]["total_tokens"].asInt();
 
         chatHistory += "AI: " + gpt_response + "\n";
@@ -256,24 +281,27 @@ int main(int argc, char *argv[]) {
         
         if (root["choices"][0]["message"].isMember("function_call")) {
             std::string functionName = root["choices"][0]["message"]["function_call"]["name"].asString();
+	    std::string arguments = root["choices"][0]["message"]["function_call"]["arguments"].asString();
+	    Json::Value result; 
             if (functionName == "execute_linux_command") {
-               std::string arguments = root["choices"][0]["message"]["function_call"]["arguments"].asString();
-               // Execute the function using these parameters
-               Json::Value result = executeLinuxCommand(arguments);
-               Json::StreamWriterBuilder writer;
-               std::string resultString = Json::writeString(writer, result);  // Convert the JSON object to a string
-               messages.push_back({"system", resultString});
-	       std::string json_response = chatWithGPT(messages,apiKey, modelName, max_tokens, total_tokens);
-               std::istringstream json_stream(json_response);
-               json_stream >> root;
-  //             root = json_stream.str();
-               std::string gpt_response = root["choices"][0]["message"]["content"].asString();
-               total_tokens = root["usage"]["total_tokens"].asInt();
-    
-               chatHistory += "AI: " + gpt_response + "\n";
-               messages.push_back({"assistant", gpt_response});
-               saveMessagesToFile(messages, filename);
-            }
+               result = executeLinuxCommand(arguments);
+	    } else if (functionName == "self_call") {
+	       result = executeSelfCallCommand(arguments);
+            } else {
+	      result = executeDummyCommand(arguments);
+	    }
+	    Json::StreamWriterBuilder writer;
+            std::string resultString = Json::writeString(writer, result);  // Convert the JSON object to a string
+            messages.push_back({"system", resultString});
+	    std::string json_response = chatWithGPT(messages,apiKey, modelName, max_tokens, total_tokens);
+            std::istringstream json_stream(json_response);
+            json_stream >> root;
+            std::string gpt_response = root["choices"][0]["message"]["content"].asString();
+            total_tokens = root["usage"]["total_tokens"].asInt();
+            chatHistory += "AI: " + gpt_response + "\n";
+            messages.push_back({"assistant", gpt_response});
+            saveMessagesToFile(messages, filename);
+
         }
 
         Json::Value usage = root["usage"];
