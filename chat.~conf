@@ -2,4 +2,3 @@
 API_KEY=<your-openai-ap-key>
 MODEL_NAME=gpt-3.5-turbo
 MAX_TOKENS=4096
-TOOLS=linux_cmd,follow_up_prompt,generic_cmd
