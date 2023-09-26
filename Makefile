@@ -1,11 +1,12 @@
 # Compiler to use
+
 CXX = g++
 
 # Compiler flags
-CXXFLAGS = -g -std=c++11 -I/opt/homebrew/Cellar/jsoncpp/1.9.5/include
+CXXFLAGS = -g -std=c++11 $(shell pkg-config --cflags jsoncpp)
 
 # Linker flags
-LDFLAGS = -L/opt/homebrew/Cellar/jsoncpp/1.9.5/lib -lncurses -lcurl -ljsoncpp
+LDFLAGS = $(shell pkg-config --libs jsoncpp) -lncurses -lcurl
 
 # Target executable name
 TARGET = chat_client
@@ -15,6 +16,7 @@ SOURCES = chat_client.cpp
 
 # Object files
 OBJECTS = $(SOURCES:.cpp=.o)
+CXX = g++
 
 all: $(TARGET)
 
