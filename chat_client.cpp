@@ -2,7 +2,6 @@
 #include <fstream>
 #include <string>
 #include <map>
-#include <ncurses.h>
 #include <cstdio>
 #include <memory>
 #include <stdexcept>
@@ -12,6 +11,12 @@
 #include <utility> // for std::pair
 #include <json/json.h>  // For jsoncpp
 #include <sstream>  // For std::istringstream
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
+#include<limits> //used to get numeric limits
 
 Json::Value loadJSONFromFile(const std::string& filename);
 
@@ -34,8 +39,8 @@ std::string chatWithGPT(const std::vector<std::pair<std::string, std::string> >&
 
 
         // Remove messages from the beginning until we fit within the token limit
-        while (remaining_tokens < 0 && temp_messages.size() > 1) {
-            int tokens_to_remove = temp_messages.front().second.length()/3;  // Estimate tokens in the first message
+        while (remaining_tokens < 0 && temp_messages.size() > 2) {
+            int tokens_to_remove = temp_messages.front().second.length()/5;  // Estimate tokens in the first message
             remaining_tokens += tokens_to_remove;
             temp_messages.erase(temp_messages.begin());  // Remove the first message
         }
@@ -81,6 +86,16 @@ std::string chatWithGPT(const std::vector<std::pair<std::string, std::string> >&
 
     return response;
 }
+
+bool endsWith(const std::string& mainStr, const std::string& toMatch) {
+    // Check if the toMatch string is longer than the main string
+    if (mainStr.size() >= toMatch.size() &&
+        mainStr.rfind(toMatch) == mainStr.size() - toMatch.size()) {
+        return true;
+    }
+    return false;
+}
+
 
 std::string exec(const char* cmd) {
     std::array<char, 128> buffer;
@@ -231,12 +246,13 @@ int main(int argc, char *argv[]) {
     // Load existing chat history
     std::vector<std::pair<std::string, std::string>> messages = loadMessagesFromFile(filename);
     // Initialization
-    keypad(stdscr, TRUE); // Enable special keys
-
+    if (messages.empty()) {
+        messages.push_back({"system", "You are a helpful assistant."});
+    }
     std::string chatHistory = messagesToChatHistory(messages);
+    std::cout << chatHistory << std::endl;
 
     std::map<std::string, std::string> config = readConfigFile(".chat.conf");
-
     std::string apiKey = config["API_KEY"];
     std::string modelName = config["MODEL_NAME"];
     int max_tokens = 0;
@@ -246,43 +262,40 @@ int main(int argc, char *argv[]) {
     } catch (const std::out_of_range& e) {
     }
 
-
-    if (messages.empty()) {
-        messages.push_back({"system", "You are a helpful assistant."});
-    }
-    int total_tokens = 2048;
+   int total_tokens = max_tokens;
+   std::string tokenInfo="";
+   std::string gpt_response = "";
+   std::string json_response = "";
 
     // Main chat loop
     while (1) {
-        // Display chat history
-        std::cout << chatHistory << std::endl;
-        refresh();
-        flushinp();
-        std::cout << "User: ";
-        std::string user_input;
-        std::getline(std::cin, user_input);
-        chatHistory += "You: " + std::string(user_input) + "\n";
+        std::cin.clear();
+        std::cout << "Send a message:" << std::endl;
+        std::string user_input="";
+        std::string line="";
+	if (gpt_response.find("{continue?}") != std::string::npos) {
+          user_input = "Please continue!";
+	  std::cout << user_input << std::endl;
+	}
+        else {
+          std::cin.ignore();
+          std::getline(std::cin, user_input);
+	}
 	messages.push_back({"user", user_input});
-
 	// Get ChatGPT response and parse it
-	std::string json_response = chatWithGPT(messages,apiKey, modelName, max_tokens, total_tokens);
+	json_response = chatWithGPT(messages,apiKey, modelName, max_tokens, total_tokens);
 	Json::Value root;
 	std::istringstream json_stream(json_response);
 	json_stream >> root;
-	std::string gpt_response = root["choices"][0]["message"]["content"].asString();
-        // std::cout << json_response + "\n";
+	gpt_response = root["choices"][0]["message"]["content"].asString();
 	total_tokens = root["usage"]["total_tokens"].asInt();
-
-        chatHistory += "AI: " + gpt_response + "\n";
-	messages.push_back({"assistant", gpt_response});
-
-        // Save the entire message history to a file
-        saveMessagesToFile(messages, filename);
-        
-        if (root["choices"][0]["message"].isMember("function_call")) {
+        int i=0;
+        while (root["choices"][0]["message"].isMember("function_call") && i < 10) {
             std::string functionName = root["choices"][0]["message"]["function_call"]["name"].asString();
 	    std::string arguments = root["choices"][0]["message"]["function_call"]["arguments"].asString();
-	    Json::Value result; 
+            messages.push_back({"assistant", functionName + " " + arguments});
+            std::cout << "assistant: " + functionName + " " + arguments << std::endl;
+            Json::Value result; 
             if (functionName == "execute_linux_command") {
                result = executeLinuxCommand(arguments);
 	    } else if (functionName == "self_call") {
@@ -293,26 +306,26 @@ int main(int argc, char *argv[]) {
 	    Json::StreamWriterBuilder writer;
             std::string resultString = Json::writeString(writer, result);  // Convert the JSON object to a string
             messages.push_back({"system", resultString});
+            std::cout << "system: " + resultString << std::endl;
 	    std::string json_response = chatWithGPT(messages,apiKey, modelName, max_tokens, total_tokens);
             std::istringstream json_stream(json_response);
             json_stream >> root;
-            std::string gpt_response = root["choices"][0]["message"]["content"].asString();
-            total_tokens = root["usage"]["total_tokens"].asInt();
-            chatHistory += "AI: " + gpt_response + "\n";
-            messages.push_back({"assistant", gpt_response});
-            saveMessagesToFile(messages, filename);
-
+	    total_tokens = root["usage"]["total_tokens"].asInt();
+	    i++;
         }
-
+	if (!gpt_response.empty()) { 
+	    messages.push_back({"assistant", gpt_response});
+            std::cout << "assistant: " + gpt_response << std::endl;
+	}
+        saveMessagesToFile(messages, filename);
         Json::Value usage = root["usage"];
 	int prompt_tokens = usage["prompt_tokens"].asInt();
 	int completion_tokens = usage["completion_tokens"].asInt();
-	std::string tokenInfo = "Prompt: " + std::to_string(prompt_tokens) + ", Completion: " + std::to_string(completion_tokens) + ", Total Tokens: " + std::to_string(total_tokens) + "\n";
-
-        
-        chatHistory += tokenInfo + "\n";
-        clear();
+        total_tokens = root["usage"]["total_tokens"].asInt();
+	tokenInfo = "Prompt: " + std::to_string(prompt_tokens) + 
+		", Completion: " + std::to_string(completion_tokens) + 
+		", Total Tokens: " + std::to_string(total_tokens) + "\n";
+        std::cout << tokenInfo + "\n";
     }
-
     return 0;
 }
