@@ -262,15 +262,17 @@ int main(int argc, char *argv[]) {
     } catch (const std::out_of_range& e) {
     }
 
-   int total_tokens = max_tokens;
-   std::string tokenInfo="";
-   std::string gpt_response = "";
-   std::string json_response = "";
+    int total_tokens = max_tokens;
+    std::string tokenInfo="";
+    std::string gpt_response = "";
+    std::string json_response = "";
+
+    bool isInteractive = isatty(fileno(stdin));
 
     // Main chat loop
     while (1) {
         std::cin.clear();
-        std::cout << "Send a message:" << std::endl;
+        std::cout << "Send an enquiry (submit with ctrl-E):" << std::endl;
         std::string user_input="";
         std::string line="";
 	if (gpt_response.find("{continue?}") != std::string::npos) {
@@ -278,14 +280,21 @@ int main(int argc, char *argv[]) {
 	  std::cout << user_input << std::endl;
 	}
         else {
-          // std::cin.ignore(std::numeric_limits<std::streamsize>::max());
-          // std::cin.clear();
-          // while (std::getline(std::cin, line)) {
-          //  user_input+=line;
-          //  line = "";
-          // }
-          std::cin.ignore();
-          std::getline(std::cin, user_input);
+          char ch;
+          while (std::cin.get(ch)) {  // read character by character
+            if (ch == '\x05') {  // stop on CTRL-E
+              break;
+            }
+            user_input += ch;
+          }
+          /* std::cin.ignore();
+          std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+          // std::getline(std::cin, user_input);
+          std::getline(std::cin, user_input, '\x05');  // Using CTRL-E as the delimiter
+          // Check if the last character is CTRL-E and remove it
+          if (!user_input.empty() && user_input.back() == '\x05') {
+            user_input.pop_back();
+          } */
 	}
 	messages.push_back({"user", user_input});
 	// Get ChatGPT response and parse it
@@ -332,6 +341,8 @@ int main(int argc, char *argv[]) {
 		", Completion: " + std::to_string(completion_tokens) + 
 		", Total Tokens: " + std::to_string(total_tokens) + "\n";
         std::cout << tokenInfo + "\n";
+        if (!isInteractive)
+		break;
     }
     return 0;
 }
