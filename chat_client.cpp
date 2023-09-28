@@ -278,6 +278,12 @@ int main(int argc, char *argv[]) {
 	  std::cout << user_input << std::endl;
 	}
         else {
+          // std::cin.ignore(std::numeric_limits<std::streamsize>::max());
+          // std::cin.clear();
+          // while (std::getline(std::cin, line)) {
+          //  user_input+=line;
+          //  line = "";
+          // }
           std::cin.ignore();
           std::getline(std::cin, user_input);
 	}

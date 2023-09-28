@@ -6,7 +6,7 @@ CXX = g++
 CXXFLAGS = -g -std=c++11 $(shell pkg-config --cflags jsoncpp)
 
 # Linker flags
-LDFLAGS = $(shell pkg-config --libs jsoncpp) -lncurses -lcurl
+LDFLAGS = $(shell pkg-config --libs jsoncpp) -lcurl
 
 # Target executable name
 TARGET = chat_client
