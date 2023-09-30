@@ -1,7 +1,7 @@
 # shellm
 <H2> shellm - Linux Terminal Client for ChatGPT.</H2> 
 
-<DIV>Features a universal Linux commandline tool for ChatGPT. It can be considered for DevOps or AI-backed automation tasks. You can ask ChatGPT to condfigure your software or search something or even access the internet to assist you.</DIV>
+<DIV>Features a universal Linux commandline tool for ChatGPT. It can be considered for DevOps or AI-backed automation tasks. You can ask ChatGPT to configure your software or search something or even access the internet to assist you.</DIV>
 </BR>
 <B> ATTENTION:The AI gets access to your operating system with all rights of the user that started the client. shellm asks before it executes a command, but it is still recommendable to run it with limited user rights or in safe environments, e.g. sandboxed.</B>
 </BR>
