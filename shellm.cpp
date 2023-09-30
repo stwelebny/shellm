@@ -239,6 +239,26 @@ std::string messagesToChatHistory(const std::vector<std::pair<std::string, std::
     return chatHistory;
 }
 
+bool askForConfirmation() {
+    char response;
+    std::cout << "Do you want to proceed? (Y/N): ";
+    std::cin >> response;
+
+    // Clear the input buffer
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    response = std::tolower(response);
+
+    if (response == 'y') {
+        return true;
+    } else if (response == 'n') {
+        return false;
+    } else {
+        std::cout << "Invalid input. Please enter Y or N." << std::endl;
+        return askForConfirmation();  // Recursive call to prompt again
+    }
+}
+
 int main(int argc, char *argv[]) {
 
     if (argc != 2) {
@@ -291,14 +311,6 @@ int main(int argc, char *argv[]) {
             }
             user_input += ch;
           }
-          /* std::cin.ignore();
-          std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-          // std::getline(std::cin, user_input);
-          std::getline(std::cin, user_input, '\x05');  // Using CTRL-E as the delimiter
-          // Check if the last character is CTRL-E and remove it
-          if (!user_input.empty() && user_input.back() == '\x05') {
-            user_input.pop_back();
-          } */
 	}
 	messages.push_back({"user", user_input});
 	// Get ChatGPT response and parse it
@@ -326,9 +338,16 @@ int main(int argc, char *argv[]) {
             std::string resultString = Json::writeString(writer, result);  // Convert the JSON object to a string
             messages.push_back({"system", resultString});
             std::cout << "system: " + resultString << std::endl;
+            if (askForConfirmation()) {
+              std::cout << "You chose to proceed!" << std::endl;
+            } else {
+              std::cout << "You chose not to proceed." << std::endl;
+              return 0;
+            }
 	    std::string json_response = chatWithGPT(messages,apiKey, modelName, max_tokens, total_tokens);
             std::istringstream json_stream(json_response);
             json_stream >> root;
+	    gpt_response = root["choices"][0]["message"]["content"].asString();
 	    total_tokens = root["usage"]["total_tokens"].asInt();
 	    i++;
         }
