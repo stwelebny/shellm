@@ -28,3 +28,4 @@ This software links the following third-party libraries:
 
 - `jsoncpp` 
 - `libcurl`
+
