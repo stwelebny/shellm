@@ -14,3 +14,10 @@ where filename.chat is the place the chat history will be saved.</DIV>
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Third-party Libraries
+
+This software links the following third-party libraries:
+
+- `jsoncpp` 
+- `libcurl`

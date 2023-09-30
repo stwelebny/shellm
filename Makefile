@@ -9,10 +9,10 @@ CXXFLAGS = -g -std=c++11 $(shell pkg-config --cflags jsoncpp)
 LDFLAGS = $(shell pkg-config --libs jsoncpp) -lcurl
 
 # Target executable name
-TARGET = chat_client
+TARGET = shellm
 
 # Source files
-SOURCES = chat_client.cpp
+SOURCES = shellm.cpp
 
 # Object files
 OBJECTS = $(SOURCES:.cpp=.o)

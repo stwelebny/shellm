@@ -1,7 +1,10 @@
-Copyright (c) 2023 Stefan Welebny
 
-This file is part of [shellm], licensed under the MIT License.
-For full terms see the included LICENSE file.
+/* Copyright (c) 2023 Stefan Welebny
+**
+** This file is part of [shellm], licensed under the MIT License.
+** For full terms see the included LICENSE file.
+**
+**/
 
 #include <iostream>
 #include <fstream>
@@ -16,11 +19,7 @@ For full terms see the included LICENSE file.
 #include <utility> // for std::pair
 #include <json/json.h>  // For jsoncpp
 #include <sstream>  // For std::istringstream
-#ifdef _WIN32
-#include <Windows.h>
-#else
 #include <unistd.h>
-#endif
 #include<limits> //used to get numeric limits
 
 Json::Value loadJSONFromFile(const std::string& filename);

@@ -8,7 +8,7 @@
 *.obj
 
 # executable
-chat_client
+shellm
 
 # Precompiled Headers
 *.gch
