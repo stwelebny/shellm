@@ -11,6 +11,12 @@
 <DIV>Usage: ./chat_client filename.chat
 where filename.chat is the place the chat history will be saved.</DIV>
 
+## Support
+
+For development support you may contact us at 
+
+https://www.welebny.com
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
