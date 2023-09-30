@@ -58,44 +58,42 @@ std::string chatWithGPT(const std::vector<std::pair<std::string, std::string> >&
 
         Json::Value messagesJson(Json::arrayValue);  // Create a JSON array
 
-	for (const auto& message : temp_messages) {
-	    Json::Value msg(Json::objectValue);  // Create a JSON object for each message
-	    msg["role"] = message.first;
-	    msg["content"] = message.second;
-	    messagesJson.append(msg);  // Append the message object to the array
-	}
+	    for (const auto& message : temp_messages) {
+	       Json::Value msg(Json::objectValue);  // Create a JSON object for each message
+	        msg["role"] = message.first;
+	        msg["content"] = message.second;
+	        messagesJson.append(msg);  // Append the message object to the array
+	    }
 
-	Json::Value root(Json::objectValue);  // Create the root JSON object
-	root["model"] = modelName;
-	root["messages"] = messagesJson;
+	    Json::Value root(Json::objectValue);  // Create the root JSON object
+	    root["model"] = modelName;
+	    root["messages"] = messagesJson;
         Json::Value tools =  loadJSONFromFile("functions.def");
         root["functions"] = tools;       
 
-	Json::StreamWriterBuilder writer;
-	std::string post_fields = Json::writeString(writer, root);  // Convert the JSON object to a string
-//        std::cout << post_fields + "\n";
+	    Json::StreamWriterBuilder writer;
+	    std::string post_fields = Json::writeString(writer, root);  // Convert the JSON object to a string
 
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_fields.c_str());
 
-	// Set the write callback to capture the response
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
-     // Perform the request
-        CURLcode res = curl_easy_perform(curl);
+        // Perform the request
+       CURLcode res = curl_easy_perform(curl);
 
-        // Cleanup
-        curl_easy_cleanup(curl);
+       // Cleanup
+       curl_easy_cleanup(curl);
     }
 
-    return response;
+   return response;
 }
 
 bool endsWith(const std::string& mainStr, const std::string& toMatch) {
-    // Check if the toMatch string is longer than the main string
-    if (mainStr.size() >= toMatch.size() &&
-        mainStr.rfind(toMatch) == mainStr.size() - toMatch.size()) {
-        return true;
+   // Check if the toMatch string is longer than the main string
+   if (mainStr.size() >= toMatch.size() &&
+       mainStr.rfind(toMatch) == mainStr.size() - toMatch.size()) {
+       return true;
     }
     return false;
 }
@@ -299,73 +297,73 @@ int main(int argc, char *argv[]) {
         std::cout << "Send an enquiry (submit with ctrl-E):" << std::endl;
         std::string user_input="";
         std::string line="";
-	if (gpt_response.find("{continue?}") != std::string::npos) {
-          user_input = "Please continue!";
-	  std::cout << user_input << std::endl;
-	}
+    	if (gpt_response.find("{continue?}") != std::string::npos) {
+            user_input = "Please continue!";
+	        std::cout << user_input << std::endl;
+	    }   
         else {
-          char ch;
-          while (std::cin.get(ch)) {  // read character by character
-            if (ch == '\x05') {  // stop on CTRL-E
-              break;
+            char ch;
+            while (std::cin.get(ch)) {  // read character by character
+                if (ch == '\x05') {  // stop on CTRL-E
+                  break;
+                }
+                user_input += ch;
             }
-            user_input += ch;
-          }
-	}
-	messages.push_back({"user", user_input});
-	// Get ChatGPT response and parse it
-	json_response = chatWithGPT(messages,apiKey, modelName, max_tokens, total_tokens);
-	Json::Value root;
-	std::istringstream json_stream(json_response);
-	json_stream >> root;
-	gpt_response = root["choices"][0]["message"]["content"].asString();
-	total_tokens = root["usage"]["total_tokens"].asInt();
+	    }
+	    messages.push_back({"user", user_input});
+	    // Get ChatGPT response and parse it
+	    json_response = chatWithGPT(messages,apiKey, modelName, max_tokens, total_tokens);
+	    Json::Value root;
+	    std::istringstream json_stream(json_response);
+	    json_stream >> root;
+	    gpt_response = root["choices"][0]["message"]["content"].asString();
+	    total_tokens = root["usage"]["total_tokens"].asInt();
         int i=0;
         while (root["choices"][0]["message"].isMember("function_call") && i < 10) {
             std::string functionName = root["choices"][0]["message"]["function_call"]["name"].asString();
-	    std::string arguments = root["choices"][0]["message"]["function_call"]["arguments"].asString();
+            std::string arguments = root["choices"][0]["message"]["function_call"]["arguments"].asString();
             messages.push_back({"assistant", functionName + " " + arguments});
             std::cout << "assistant: " + functionName + " " + arguments << std::endl;
             Json::Value result; 
             if (functionName == "execute_linux_command") {
-               result = executeLinuxCommand(arguments);
-	    } else if (functionName == "self_call") {
-	       result = executeSelfCallCommand(arguments);
+                result = executeLinuxCommand(arguments);
+            } else if (functionName == "self_call") {
+                result = executeSelfCallCommand(arguments);
             } else {
-	      result = executeDummyCommand(arguments);
-	    }
-	    Json::StreamWriterBuilder writer;
+                result = executeDummyCommand(arguments);
+            }
+            Json::StreamWriterBuilder writer;
             std::string resultString = Json::writeString(writer, result);  // Convert the JSON object to a string
             messages.push_back({"system", resultString});
             std::cout << "system: " + resultString << std::endl;
             if (askForConfirmation()) {
-              std::cout << "You chose to proceed!" << std::endl;
+            std::cout << "You chose to proceed!" << std::endl;
             } else {
-              std::cout << "You chose not to proceed." << std::endl;
-              return 0;
+                std::cout << "You chose not to proceed." << std::endl;
+                return 0;
             }
-	    std::string json_response = chatWithGPT(messages,apiKey, modelName, max_tokens, total_tokens);
+            std::string json_response = chatWithGPT(messages,apiKey, modelName, max_tokens, total_tokens);
             std::istringstream json_stream(json_response);
             json_stream >> root;
-	    gpt_response = root["choices"][0]["message"]["content"].asString();
-	    total_tokens = root["usage"]["total_tokens"].asInt();
-	    i++;
+            gpt_response = root["choices"][0]["message"]["content"].asString();
+            total_tokens = root["usage"]["total_tokens"].asInt();
+            i++;
         }
-	if (!gpt_response.empty()) { 
-	    messages.push_back({"assistant", gpt_response});
+        if (!gpt_response.empty()) { 
+            messages.push_back({"assistant", gpt_response});
             std::cout << "assistant: " + gpt_response << std::endl;
-	}
+        }
         saveMessagesToFile(messages, filename);
         Json::Value usage = root["usage"];
-	int prompt_tokens = usage["prompt_tokens"].asInt();
-	int completion_tokens = usage["completion_tokens"].asInt();
+        int prompt_tokens = usage["prompt_tokens"].asInt();
+        int completion_tokens = usage["completion_tokens"].asInt();
         total_tokens = root["usage"]["total_tokens"].asInt();
-	tokenInfo = "Prompt: " + std::to_string(prompt_tokens) + 
-		", Completion: " + std::to_string(completion_tokens) + 
-		", Total Tokens: " + std::to_string(total_tokens) + "\n";
+        tokenInfo = "Prompt: " + std::to_string(prompt_tokens) + 
+            ", Completion: " + std::to_string(completion_tokens) + 
+            ", Total Tokens: " + std::to_string(total_tokens) + "\n";
         std::cout << tokenInfo + "\n";
         if (!isInteractive)
-		break;
+            break;
     }
     return 0;
 }
