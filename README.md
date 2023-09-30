@@ -10,3 +10,7 @@
 <DIV>copy chat.~conf to .chat.conf and edit your API key. You can also change the model name there.</DIV>
 <DIV>Usage: ./chat_client filename.chat
 where filename.chat is the place the chat history will be saved.</DIV>
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

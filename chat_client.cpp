@@ -1,3 +1,8 @@
+Copyright (c) 2023 Stefan Welebny
+
+This file is part of [shellm], licensed under the MIT License.
+For full terms see the included LICENSE file.
+
 #include <iostream>
 #include <fstream>
 #include <string>
