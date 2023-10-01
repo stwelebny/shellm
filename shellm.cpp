@@ -294,7 +294,7 @@ int main(int argc, char *argv[]) {
     // Main chat loop
     while (1) {
         std::cin.clear();
-        std::cout << "Send an enquiry (submit with ctrl-E):" << std::endl;
+        std::cout << "Send an enquiry (submit with ctrl-E and return):" << std::endl;
         std::string user_input="";
         std::string line="";
     	if (gpt_response.find("{continue?}") != std::string::npos) {
